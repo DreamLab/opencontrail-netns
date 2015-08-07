@@ -44,12 +44,13 @@ def daemon_start():
     manager = LxcManager()
     provisioner = Provisioner(api_server=arguments.api_server,
                               api_port=arguments.api_port)
-    instance_name = '%s-%s' % (socket.gethostname(), arguments.daemon)
-    vm = provisioner.virtual_machine_locate(instance_name)
+    vrouter_name = socket.gethostname()
+    instance_name = '%s-%s' % (vrouter_name, arguments.daemon)
+    vm = provisioner.virtual_machine_locate(vrouter_name, instance_name)
 
     network = build_network_name(arguments.project, arguments.network)
 
-    vmi = provisioner.vmi_locate(vm, network, 'veth0')
+    vmi, project = provisioner.vmi_locate(vm, network, 'veth0')
     vmi_out = None
     if arguments.outbound:
         outbound_name = build_network_name(arguments.project,
@@ -58,7 +59,7 @@ def daemon_start():
 
     manager.namespace_init(arguments.daemon)
     ifname = manager.interface_update(arguments.daemon, vmi, 'veth0')
-    interface_register(vm, vmi, ifname)
+    interface_register(vm, vmi, ifname, project=project)
 
     if vmi_out:
         ifname = manager.interface_update(arguments.daemon, vmi_out, 'veth1')

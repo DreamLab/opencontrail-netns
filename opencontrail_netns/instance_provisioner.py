@@ -20,7 +20,7 @@ class Provisioner(object):
             pass
         return None
 
-    def virtual_machine_locate(self, vm_name):
+    def virtual_machine_locate(self, vr_name, vm_name):
         # if vm_name.find(':') == -1:
         #    vm_name = self._project + ':' + vm_name
         fq_name = vm_name.split(':')
@@ -32,9 +32,18 @@ class Provisioner(object):
 
         vm_instance = VirtualMachine(vm_name)
         self._client.virtual_machine_create(vm_instance)
+
+        vrouter = self._client.virtual_router_read(
+                       fq_name=['default-global-system-config', vr_name])
+        vrouter.add_virtual_machine(vm_instance)
+        self._client.virtual_router_update(vrouter)
         return vm_instance
 
-    def virtual_machine_delete(self, vm_instance):
+    def virtual_machine_delete(self, vr_name, vm_instance):
+        vrouter = self._client.virtual_router_read(
+                       fq_name=['default-global-system-config', vr_name])
+        vrouter.del_virtual_machine(vm_instance)
+        self._client.virtual_router_update(vrouter)
         self._client.virtual_machine_delete(id=vm_instance.uuid)
 
     def _virtual_network_lookup(self, network_name):
@@ -46,22 +55,31 @@ class Provisioner(object):
 
         return vnet
 
-    def vmi_locate(self, vm_instance, network, name, advertise_default=True):
-        fq_name = vm_instance.fq_name[:]
-        fq_name.append(name)
-        create = False
+    def project_lookup(self, fq_name):
         try:
-            vmi = self._client.virtual_machine_interface_read(fq_name=fq_name)
+            proj = self._client.project_read(fq_name=fq_name)
         except NoIdError:
-            vmi = VirtualMachineInterface(parent_type='virtual-machine',
-                                          fq_name=fq_name)
-            create = True
+            return None
 
+        return proj
+
+    def vmi_locate(self, vm_instance, network, name, advertise_default=True):
         vnet = self._virtual_network_lookup(network)
         if not vnet:
             sys.exit(1)
 
+        project = self.project_lookup(fq_name=vnet.get_fq_name()[:-1])
+        vmi_name = '%s-%s' %(vm_instance.name, name)
+        vmi_fq_name = project.get_fq_name() + [vmi_name]
+        create = False
+        try:
+            vmi = self._client.virtual_machine_interface_read(fq_name=vmi_fq_name)
+        except NoIdError:
+            vmi = VirtualMachineInterface(name=vmi_name, parent_obj=project)
+            create = True
+
         vmi.set_virtual_network(vnet)
+        vmi.set_virtual_machine(vm_instance)
         if create:
             self._client.virtual_machine_interface_create(vmi)
             vmi = self._client.virtual_machine_interface_read(id=vmi.uuid)
@@ -80,7 +98,7 @@ class Provisioner(object):
         ip = self._client.instance_ip_read(id=uuid)
 
         # print "IP address: %s" % ip.get_instance_ip_address()
-        return vmi
+        return vmi, project
 
     def vmi_delete(self, uuid):
         try:

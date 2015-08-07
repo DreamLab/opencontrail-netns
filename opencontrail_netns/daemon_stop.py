@@ -26,10 +26,11 @@ def daemon_stop():
     manager = LxcManager()
     provisioner = Provisioner(api_server=arguments.api_server,
                               api_port=arguments.api_port)
-    instance_name = '%s-%s' % (socket.gethostname(), arguments.daemon)
+    vrouter_name = socket.gethostname()
+    instance_name = '%s-%s' % (vrouter_name, arguments.daemon)
     vm = provisioner.virtual_machine_lookup(instance_name)
 
-    vmi_list = vm.get_virtual_machine_interfaces()
+    vmi_list = vm.get_virtual_machine_interface_back_refs()
     for ref in vmi_list:
         uuid = ref['uuid']
         interface_unregister(uuid)
@@ -39,7 +40,7 @@ def daemon_stop():
     for ref in vmi_list:
         provisioner.vmi_delete(ref['uuid'])
 
-    provisioner.virtual_machine_delete(vm)
+    provisioner.virtual_machine_delete(vrouter_name, vm)
     manager.namespace_delete(arguments.daemon)
 
 # end daemon_stop
