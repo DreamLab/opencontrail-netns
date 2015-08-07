@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name = "opencontrail-netns",
-    version = "0.1",
+    version = "0.2",
     packages = setuptools.find_packages(),
 
     entry_points = {
