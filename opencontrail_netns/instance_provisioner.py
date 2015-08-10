@@ -20,7 +20,7 @@ class Provisioner(object):
             pass
         return None
 
-    def virtual_machine_locate(self, vr_name, vm_name):
+    def virtual_machine_locate(self, vr_name, vm_name, project):
         # if vm_name.find(':') == -1:
         #    vm_name = self._project + ':' + vm_name
         fq_name = vm_name.split(':')
@@ -30,7 +30,7 @@ class Provisioner(object):
         except NoIdError:
             pass
 
-        vm_instance = VirtualMachine(vm_name)
+        vm_instance = VirtualMachine(name=vm_name, parent_obj=project)
         self._client.virtual_machine_create(vm_instance)
 
         vrouter = self._client.virtual_router_read(
@@ -63,12 +63,11 @@ class Provisioner(object):
 
         return proj
 
-    def vmi_locate(self, vm_instance, network, name, advertise_default=True):
+    def vmi_locate(self, vm_instance, network, name, project, advertise_default=True):
         vnet = self._virtual_network_lookup(network)
         if not vnet:
             sys.exit(1)
 
-        project = self.project_lookup(fq_name=vnet.get_fq_name()[:-1])
         vmi_name = '%s-%s' %(vm_instance.name, name)
         vmi_fq_name = project.get_fq_name() + [vmi_name]
         create = False
@@ -98,7 +97,7 @@ class Provisioner(object):
         ip = self._client.instance_ip_read(id=uuid)
 
         # print "IP address: %s" % ip.get_instance_ip_address()
-        return vmi, project
+        return vmi
 
     def vmi_delete(self, uuid):
         try:

@@ -46,11 +46,13 @@ def daemon_start():
                               api_port=arguments.api_port)
     vrouter_name = socket.gethostname()
     instance_name = '%s-%s' % (vrouter_name, arguments.daemon)
-    vm = provisioner.virtual_machine_locate(vrouter_name, instance_name)
+    project_fq_name = arguments.project.split(':')
+    project = provisioner.project_lookup(project_fq_name)
+    vm = provisioner.virtual_machine_locate(vrouter_name, instance_name, project)
 
     network = build_network_name(arguments.project, arguments.network)
 
-    vmi, project = provisioner.vmi_locate(vm, network, 'veth0')
+    vmi = provisioner.vmi_locate(vm, network, 'veth0', project)
     vmi_out = None
     if arguments.outbound:
         outbound_name = build_network_name(arguments.project,
